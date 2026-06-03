@@ -1,8 +1,10 @@
 // screens/admin/add_service_screen.dart
 import 'package:flutter/material.dart';
+import 'package:fuse/providers/salon_provider.dart';
 import 'package:fuse/utils/constains.dart';
 import 'package:fuse/widgets/custom_labels.dart';
 import 'package:fuse/widgets/custom_text_field.dart';
+import 'package:provider/provider.dart';
 
 class AddServiceScreen extends StatefulWidget {
   const AddServiceScreen({super.key});
@@ -18,6 +20,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final addressController = TextEditingController();
   
   String? selectedCity;
+  TimeOfDay? startTime; // 👈 ДОБАВИЛИ
+  TimeOfDay? endTime;   // 👈 ДОБАВИЛИ
 
   @override
   void dispose() {
@@ -26,6 +30,35 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     contactsController.dispose();
     addressController.dispose();
     super.dispose();
+  }
+
+  String _formatTime(TimeOfDay? time) {
+    if (time == null) return 'Не выбрано';
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _selectStartTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time != null) {
+      setState(() {
+        startTime = time;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time != null) {
+      setState(() {
+        endTime = time;
+      });
+    }
   }
 
   @override
@@ -40,8 +73,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         title: const Text('Добавить салон', style: TextStyle(color: Colors.white)),
         backgroundColor: background_color,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
-          // Кнопка "Добавить" справа
           TextButton(
             onPressed: _saveSalon,
             child: const Text(
@@ -66,7 +99,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Описание (большое поле)
+            // Описание
             const AddLabel(label: 'Описание'),
             const SizedBox(height: 10),
             Container(
@@ -108,7 +141,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Город (выпадающий список)
+            // Город
             const AddLabel(label: 'Город'),
             const SizedBox(height: 10),
             Container(
@@ -161,12 +194,77 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               label: 'Улица, дом, офис',
               widthFactor: 1,
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
-            // Примечание (через AddLabel)
-            const AddLabel(
-              label: 'Примечание',
+            // 👇 ДОБАВИЛИ ЧАСЫ РАБОТЫ
+            // Часы работы
+            const AddLabel(label: 'Часы работы'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _selectStartTime,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: textfield_color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Открытие',
+                            style: TextStyle(color: hint_color, fontSize: 14),
+                          ),
+                          Text(
+                            _formatTime(startTime),
+                            style: TextStyle(
+                              color: startTime != null ? Colors.white : hint_color,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _selectEndTime,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: textfield_color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Закрытие',
+                            style: TextStyle(color: hint_color, fontSize: 14),
+                          ),
+                          Text(
+                            _formatTime(endTime),
+                            style: TextStyle(
+                              color: endTime != null ? Colors.white : hint_color,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 20),
+
+            // Примечание
+            const AddLabel(label: 'Примечание'),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
@@ -186,32 +284,75 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     );
   }
 
-  void _saveSalon() {
-    // Проверка заполнения
-    if (nameController.text.isEmpty ||
-        descriptionController.text.isEmpty ||
-        contactsController.text.isEmpty ||
-        selectedCity == null ||
-        addressController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Заполните все поля'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  void _saveSalon() async {
+    final name = nameController.text.trim();
+    final description = descriptionController.text.trim();
+    final contacts = contactsController.text.trim();
+    final address = addressController.text.trim();
+    
+    // Валидация
+    if (name.isEmpty) {
+      _showError('Введите название салона');
       return;
     }
-
-
-
+    
+    if (description.isEmpty) {
+      _showError('Введите описание салона');
+      return;
+    }
+    
+    if (contacts.isEmpty) {
+      _showError('Введите контакты');
+      return;
+    }
+    
+    if (selectedCity == null || selectedCity!.isEmpty) {
+      _showError('Выберите город');
+      return;
+    }
+    
+    if (address.isEmpty) {
+      _showError('Введите адрес');
+      return;
+    }
+    
+    if (startTime == null || endTime == null) {
+      _showError('Укажите часы работы');
+      return;
+    }
+    
+    // Сохраняем через SalonProvider
+    final salonProvider = Provider.of<SalonProvider>(context, listen: false);
+    
+    final success = await salonProvider.saveSalon({
+      'name': name,
+      'description': description,
+      'contacts': contacts,
+      'city': selectedCity,
+      'address': address,
+      'startTime': '${startTime!.hour}:${startTime!.minute.toString().padLeft(2, '0')}',
+      'endTime': '${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}',
+    });
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Салон успешно добавлен!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context, true);
+    } else {
+      _showError('Ошибка сохранения салона');
+    }
+  }
+  
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Салон успешно добавлен!'),
-        backgroundColor: Colors.green,
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
       ),
     );
-
-    // Возвращаемся на главный экран
-    Navigator.pop(context);
   }
 }

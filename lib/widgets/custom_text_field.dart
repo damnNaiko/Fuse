@@ -10,6 +10,8 @@ class CustomTextField extends StatelessWidget {
   final double widthFactor;
   final TextInputType keyboardType;
   final bool onlyDigits; 
+  final Function(String)? onChanged;
+  final bool enabled;
 
   const CustomTextField({
     super.key,
@@ -19,6 +21,8 @@ class CustomTextField extends StatelessWidget {
     this.widthFactor = 0.7,
     this.keyboardType = TextInputType.text, 
     this.onlyDigits = false, 
+    this.onChanged,
+    this.enabled = true,
   });
 
   @override
@@ -26,10 +30,12 @@ class CustomTextField extends StatelessWidget {
     return Container(
       width: MediaQuery.sizeOf(context).width * widthFactor,
       child: TextField(
+        enabled: enabled,
         controller: controller,
         keyboardType: onlyDigits ? TextInputType.number : keyboardType,
         inputFormatters: onlyDigits ? [FilteringTextInputFormatter.digitsOnly] : [],
         obscureText: obscure,
+        onChanged: onChanged, 
         cursorColor: Colors.white,
         decoration: InputDecoration(
           filled: true,

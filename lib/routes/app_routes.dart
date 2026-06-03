@@ -4,6 +4,7 @@ import 'package:fuse/screens/auth/forgot_password.dart';
 import 'package:fuse/screens/auth/login_screen.dart';
 import 'package:fuse/screens/auth/register_screen.dart';
 import 'package:fuse/screens/admin/admin_main_screen.dart';
+import 'package:fuse/screens/client/client_main_screen.dart';
 import 'package:fuse/screens/shared/settings_screen.dart';
 import 'package:fuse/screens/admin/add_service_screen.dart';
 import 'package:fuse/screens/admin/edit_salon_screen.dart';
@@ -23,6 +24,9 @@ class AppRoutes {
     switch (settings.name) {
       case login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
+
+      case clientMain:
+        return MaterialPageRoute(builder: (_) => const ClientMainScreen());
 
       case city:
         return MaterialPageRoute(builder: (_) => const CityChangeScreen());

@@ -18,7 +18,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   
   // Список экранов
   final List<Widget> _screens = [
-    const AdminMainInfoScreen(),      // Главное меню / информация о сервисе
+    const AdminInfoScreen(),      // Главное меню / информация о сервисе
     const AdminBookingsScreen(),  // Записи (история)
     const AdminServicesScreen(),  // Услуги
     SettingsScreen(),        // Настройки

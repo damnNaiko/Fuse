@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fuse/providers/service_provider.dart';
+import 'package:fuse/providers/salon_provider.dart';
 import 'package:fuse/utils/constains.dart';
 import 'package:fuse/widgets/custom_labels.dart';
 import 'package:fuse/widgets/custom_text_field.dart';
@@ -11,19 +14,32 @@ class AdminServicesScreen extends StatefulWidget {
 }
 
 class _AdminServicesScreenState extends State<AdminServicesScreen> {
-  // Контроллеры для диалога добавления/редактирования
   final nameController = TextEditingController();
   final priceController = TextEditingController();
   final durationController = TextEditingController();
   
-  String? editingServiceId; // null если добавляем, не null если редактируем
+  String? editingServiceId;
 
-  // Моковые данные (потом заменишь на Firebase)
-  final List<Map<String, dynamic>> _services = [
-    {'id': '1', 'name': 'Стрижка', 'price': 1500, 'duration': 60},
-    {'id': '2', 'name': 'Маникюр', 'price': 1200, 'duration': 45},
-    {'id': '3', 'name': 'Массаж', 'price': 2000, 'duration': 90},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkSalonAndLoadServices();
+    });
+  }
+
+  Future<void> _checkSalonAndLoadServices() async {
+    final salonProvider = Provider.of<SalonProvider>(context, listen: false);
+    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+    
+    // Загружаем салон, если его ещё нет
+    await salonProvider.fetchSalon();
+    
+    // Если салон есть — загружаем услуги
+    if (salonProvider.salon != null) {
+      await serviceProvider.fetchServices();
+    }
+  }
 
   @override
   void dispose() {
@@ -52,18 +68,46 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: background_color,
-        title: Text(isEditing ? 'Редактировать услугу' : 'Добавить услугу', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(alignment: .centerLeft, child: AddLabel(label: "Название")),
-            const SizedBox(height: 10),
-            CustomTextField(controller: nameController, label: 'Название услуги'),
-            const SizedBox(height: 20),
-            Align(alignment: .centerLeft, child: AddLabel(label: "Цена")),
-            const SizedBox(height: 10),
-            CustomTextField(controller: priceController, label: 'Цена (₽)', keyboardType: TextInputType.number, onlyDigits: true),
-          ],
+        title: Text(
+          isEditing ? 'Редактировать услугу' : 'Добавить услугу',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AddLabel(label: "Название"),
+              ),
+              const SizedBox(height: 8),
+              CustomTextField(controller: nameController, label: 'Название услуги'),
+              const SizedBox(height: 10),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AddLabel(label: "Цена"),
+              ),
+              const SizedBox(height: 8),
+              CustomTextField(
+                controller: priceController,
+                label: 'Цена (₽)',
+                keyboardType: TextInputType.number,
+                onlyDigits: true,
+              ),
+              const SizedBox(height: 10),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AddLabel(label: "Длительность (мин)"),
+              ),
+              const SizedBox(height: 8),
+              CustomTextField(
+                controller: durationController,
+                label: 'Длительность (мин)',
+                keyboardType: TextInputType.number,
+                onlyDigits: true,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -71,25 +115,71 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
             child: const Text('Отмена', style: TextStyle(color: hint_color)),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isEmpty || priceController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Заполните название и цену')),
-                );
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final price = priceController.text.trim();
+              final duration = durationController.text.trim();
+              
+              if (name.isEmpty) {
+                _showError('Введите название услуги');
                 return;
               }
               
-              if (isEditing) {
-                _updateService();
-              } else {
-                _addService();
+              if (price.isEmpty) {
+                _showError('Введите цену услуги');
+                return;
               }
-              Navigator.pop(context);
+              
+              final priceValue = int.tryParse(price);
+              if (priceValue == null || priceValue <= 0) {
+                _showError('Введите корректную цену');
+                return;
+              }
+              
+              if (duration.isEmpty) {
+                _showError('Введите длительность');
+                return;
+              }
+              
+              final durationValue = int.tryParse(duration);
+              if (durationValue == null || durationValue <= 0) {
+                _showError('Введите корректную длительность');
+                return;
+              }
+              
+              final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+              bool success;
+              
+              if (isEditing) {
+                success = await serviceProvider.updateService(editingServiceId!, {
+                  'name': name,
+                  'price': priceValue,
+                  'duration': durationValue,
+                });
+              } else {
+                success = await serviceProvider.addService({
+                  'name': name,
+                  'price': priceValue,
+                  'duration': durationValue,
+                });
+              }
+              
+              if (success) {
+                Navigator.pop(context);
+                _showSuccess(isEditing ? 'Услуга обновлена' : 'Услуга добавлена');
+              } else {
+                _showError('Ошибка сохранения');
+              }
             },
-            child: Text(isEditing ? 'Сохранить' : 'Добавить', style: TextStyle(color: Colors.black),),
+            child: Text(
+              isEditing ? 'Сохранить' : 'Добавить',
+              style: const TextStyle(color: Colors.black),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ],
@@ -97,72 +187,60 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
     );
   }
 
-  void _addService() {
-    setState(() {
-      _services.add({
-        'id': DateTime.now().toString(),
-        'name': nameController.text,
-        'price': int.parse(priceController.text),
-      });
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Услуга добавлена'), backgroundColor: Colors.green),
-    );
-  }
-
-  void _updateService() {
-    final index = _services.indexWhere((s) => s['id'] == editingServiceId);
-    if (index != -1) {
-      setState(() {
-        _services[index] = {
-          'id': editingServiceId!,
-          'name': nameController.text,
-          'price': int.parse(priceController.text),
-        };
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Услуга обновлена'), backgroundColor: Colors.green),
-      );
-    }
-  }
-
-  void _deleteService(String id) {
-    showDialog(
+  void _deleteService(String id) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: background_color,
-        title: const Text('Удалить услугу?', style: TextStyle(color: Colors.white),),
+        title: const Text('Удалить услугу?', style: TextStyle(color: Colors.white)),
         content: const Text('Это действие нельзя отменить.', style: TextStyle(color: Colors.white)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Отмена', style: TextStyle(color: hint_color)),
           ),
           TextButton(
-            onPressed: () {
-              setState(() {
-                _services.removeWhere((s) => s['id'] == id);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Услуга удалена'), backgroundColor: Colors.red),
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+    
+    if (confirm == true) {
+      final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+      final success = await serviceProvider.deleteService(id);
+      if (success) {
+        _showSuccess('Услуга удалена');
+      } else {
+        _showError('Ошибка удаления');
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final salonProvider = Provider.of<SalonProvider>(context);
+    final serviceProvider = Provider.of<ServiceProvider>(context);
+
+    // Проверяем, есть ли салон
+    if (salonProvider.salon == null) {
+      return _buildNoSalonState();
+    }
+
+    if (serviceProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final services = serviceProvider.services;
+
     return Scaffold(
       backgroundColor: background_color,
       appBar: AppBar(
         title: const Text('Услуги', style: TextStyle(color: Colors.white)),
         backgroundColor: background_color,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
@@ -170,7 +248,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
           ),
         ],
       ),
-      body: _services.isEmpty
+      body: services.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -179,14 +257,14 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Нет добавленных услуг',
-                    style: TextStyle(color: hint_color, fontSize: 18),
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => _showServiceDialog(),
-                    child: const Text('Добавить первую услугу'),
+                    child: const Text('Добавить первую услугу', style: TextStyle(color: Colors.black),),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: active_button,
+                      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -197,9 +275,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _services.length,
+              itemCount: services.length,
               itemBuilder: (context, index) {
-                final service = _services[index];
+                final service = services[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
@@ -224,13 +302,18 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
                           '${service['price']} ₽',
                           style: TextStyle(color: hint_color, fontSize: 14),
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '⏱ ${service['duration']} мин',
+                          style: TextStyle(color: hint_color, fontSize: 12),
+                        ),
                       ],
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Color.fromARGB(255, 255, 255, 255)),
+                          icon: const Icon(Icons.edit, color: Colors.white),
                           onPressed: () => _showServiceDialog(service: service),
                         ),
                         IconButton(
@@ -243,6 +326,68 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildNoSalonState() {
+    return Scaffold(
+      backgroundColor: background_color,
+      appBar: AppBar(
+        title: const Text('Услуги', style: TextStyle(color: Colors.white)),
+        backgroundColor: background_color,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.store, size: 80, color: hint_color),
+              const SizedBox(height: 16),
+              Text(
+                'Сначала создайте салон',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Чтобы добавлять услуги, необходимо сначала создать салон в разделе "Главная"',
+                style: TextStyle(color: hint_color, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  // Переключаем нижнюю навигацию на главный экран (индекс 0)
+                  // Нужно передать индекс в AdminMainScreen
+                  Navigator.pop(context); // Возвращаемся назад, если нужно
+                },
+                icon: const Icon(Icons.add, color: Colors.black),
+                label: const Text('Создать салон', style: TextStyle(color: Colors.black)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 }

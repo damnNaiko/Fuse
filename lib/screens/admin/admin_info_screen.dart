@@ -1,59 +1,53 @@
-// screens/admin/admin_main_info_screen.dart
 import 'package:flutter/material.dart';
+import 'package:fuse/routes/app_routes.dart';
+import 'package:provider/provider.dart';
+import 'package:fuse/providers/salon_provider.dart';
 import 'package:fuse/utils/constains.dart';
-import 'package:fuse/screens/admin/add_service_screen.dart';
-import 'package:fuse/screens/admin/edit_salon_screen.dart';
 
-class AdminMainInfoScreen extends StatefulWidget {
-  const AdminMainInfoScreen({super.key});
+class AdminInfoScreen extends StatefulWidget {
+  const AdminInfoScreen({super.key});
 
   @override
-  State<AdminMainInfoScreen> createState() => _AdminMainInfoScreenState();
+  State<AdminInfoScreen> createState() => _AdminInfoScreenState();
 }
 
-class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
-  // Временно храним данные салона здесь
-  // Потом заменишь на данные из Firebase
-  Map<String, dynamic>? _salonData;
-
+class _AdminInfoScreenState extends State<AdminInfoScreen> {
   @override
   void initState() {
     super.initState();
-    // Проверяем, есть ли сохраненный салон (пока моково)
-    _checkSalonData();
-  }
-
-  void _checkSalonData() {
-    print('Проверяем данные салона...');
-    final savedSalon = {
-      'name': 'Fuse Салон Красоты',
-      'description': 'Профессиональный салон красоты...',
-      'contacts': '+7 (999) 123-45-67',
-      'city': 'Москва',
-      'address': 'ул. Тверская, д. 10',
-    };
-    
-    print('Салон загружен: $savedSalon');
-    setState(() {
-      _salonData = savedSalon;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SalonProvider>(context, listen: false).fetchSalon();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final salonProvider = Provider.of<SalonProvider>(context);
+
+    if (salonProvider.isLoading) {
+      return const Scaffold(
+        backgroundColor: background_color,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final salon = salonProvider.salon;
+
     return Scaffold(
       backgroundColor: background_color,
       appBar: AppBar(
-        title: const Text('Мой салон', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Мой салон',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: background_color,
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: _salonData == null ? _buildEmptyState() : _buildSalonCard(),
+      body: salon == null ? _buildEmptyState() : _buildSalonCard(salon),
     );
   }
 
-  // Состояние "нет салона"
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -95,7 +89,7 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
             const SizedBox(height: 30),
             ElevatedButton.icon(
               onPressed: () {
-                _navigateToAddService();
+                Navigator.pushNamed(context, AppRoutes.addService);
               },
               icon: const Icon(Icons.add, color: Colors.black),
               label: const Text(
@@ -116,27 +110,20 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
     );
   }
 
-  // Карточка салона
-  Widget _buildSalonCard() {
+  Widget _buildSalonCard(Map<String, dynamic> salon) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Карточка с информацией
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
               color: textfield_color,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Заголовок карточки (можно добавить иконку)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -155,11 +142,7 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
                           color: active_button,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.store,
-                          color: Colors.white,
-                          size: 30,
-                        ),
+                        child: const Icon(Icons.store, color: Colors.white, size: 30),
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -167,7 +150,7 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _salonData!['name'],
+                              salon['name'] ?? 'Название не указано',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -176,11 +159,8 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _salonData!['city'],
-                              style: TextStyle(
-                                color: hint_color,
-                                fontSize: 14,
-                              ),
+                              salon['city'] ?? 'Город не указан',
+                              style: TextStyle(color: hint_color, fontSize: 14),
                             ),
                           ],
                         ),
@@ -189,110 +169,68 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
                   ),
                 ),
                 
-                // Тело карточки с информацией
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Описание
-                      const Row(
-                        children: [
-                          Icon(Icons.description, color: hint_color, size: 20),
-                          SizedBox(width: 10),
-                          Text(
-                            'Описание',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Описание',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: background_color,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _salonData!['description'],
-                          style: TextStyle(
-                            color: hint_color,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
+                      Text(
+                        salon['description'] ?? 'Описание не добавлено',
+                        style: TextStyle(color: hint_color, fontSize: 14),
                       ),
                       const SizedBox(height: 20),
                       
-                      // Контакты
-                      const Row(
-                        children: [
-                          Icon(Icons.contact_phone, color: hint_color, size: 20),
-                          SizedBox(width: 10),
-                          Text(
-                            'Контакты',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Контакты',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: background_color,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _salonData!['contacts'],
-                          style: TextStyle(
-                            color: hint_color,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
+                      Text(
+                        salon['contacts'] ?? 'Контакты не указаны',
+                        style: TextStyle(color: hint_color, fontSize: 14),
                       ),
                       const SizedBox(height: 20),
                       
-                      // Адрес
-                      const Row(
-                        children: [
-                          Icon(Icons.location_on, color: hint_color, size: 20),
-                          SizedBox(width: 10),
-                          Text(
-                            'Адрес',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Адрес',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: background_color,
-                          borderRadius: BorderRadius.circular(12),
+                      Text(
+                        salon['address'] ?? 'Адрес не указан',
+                        style: TextStyle(color: hint_color, fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      const Text(
+                        'Часы работы',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: Text(
-                          _salonData!['address'],
-                          style: TextStyle(
-                            color: hint_color,
-                            fontSize: 14,
-                          ),
-                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${salon['startTime'] ?? '—'} — ${salon['endTime'] ?? '—'}',
+                        style: TextStyle(color: hint_color, fontSize: 14),
                       ),
                     ],
                   ),
@@ -303,12 +241,15 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
           
           const SizedBox(height: 20),
           
-          // Кнопка "Изменить"
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                _navigateToEditSalon();
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.editSalon,
+                  arguments: {'salonData': salon},
+                );
               },
               icon: const Icon(Icons.edit, color: Colors.black),
               label: const Text(
@@ -327,27 +268,5 @@ class _AdminMainInfoScreenState extends State<AdminMainInfoScreen> {
         ],
       ),
     );
-  }
-
-  void _navigateToAddService() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AddServiceScreen(),
-      ),
-    ).then((_) {
-      _checkSalonData(); // Обновляем данные после возвращения
-    });
-  }
-
-  void _navigateToEditSalon() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditSalonScreen(salonData: _salonData!),
-      ),
-    ).then((_) {
-      _checkSalonData(); // Обновляем данные после редактирования
-    });
   }
 }

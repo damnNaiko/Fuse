@@ -1,5 +1,6 @@
-// screens/admin/edit_salon_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fuse/providers/salon_provider.dart';
 import 'package:fuse/utils/constains.dart';
 import 'package:fuse/widgets/custom_labels.dart';
 import 'package:fuse/widgets/custom_text_field.dart';
@@ -19,6 +20,8 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
   late TextEditingController contactsController;
   late TextEditingController addressController;
   late String? selectedCity;
+  late TimeOfDay? startTime;
+  late TimeOfDay? endTime;
 
   @override
   void initState() {
@@ -28,6 +31,17 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
     contactsController = TextEditingController(text: widget.salonData['contacts']);
     addressController = TextEditingController(text: widget.salonData['address']);
     selectedCity = widget.salonData['city'];
+    
+    // Парсим время
+    startTime = _parseTime(widget.salonData['startTime']);
+    endTime = _parseTime(widget.salonData['endTime']);
+  }
+
+  TimeOfDay? _parseTime(String? timeString) {
+    if (timeString == null || timeString.isEmpty) return null;
+    final parts = timeString.split(':');
+    if (parts.length != 2) return null;
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
   @override
@@ -37,6 +51,35 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
     contactsController.dispose();
     addressController.dispose();
     super.dispose();
+  }
+
+  String _formatTime(TimeOfDay? time) {
+    if (time == null) return 'Не выбрано';
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _selectStartTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: startTime ?? TimeOfDay.now(),
+    );
+    if (time != null) {
+      setState(() {
+        startTime = time;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: endTime ?? TimeOfDay.now(),
+    );
+    if (time != null) {
+      setState(() {
+        endTime = time;
+      });
+    }
   }
 
   @override
@@ -51,6 +94,7 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
         title: const Text('Редактировать салон', style: TextStyle(color: Colors.white)),
         backgroundColor: background_color,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           TextButton(
             onPressed: _saveChanges,
@@ -68,11 +112,7 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
           children: [
             const AddLabel(label: 'Название салона'),
             const SizedBox(height: 10),
-            CustomTextField(
-              controller: nameController,
-              label: 'Название',
-              widthFactor: 1,
-            ),
+            CustomTextField(controller: nameController, label: 'Название', widthFactor: 1),
             const SizedBox(height: 20),
 
             const AddLabel(label: 'Описание'),
@@ -108,11 +148,7 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
 
             const AddLabel(label: 'Контакты'),
             const SizedBox(height: 10),
-            CustomTextField(
-              controller: contactsController,
-              label: 'Телефон, WhatsApp, Telegram...',
-              widthFactor: 1,
-            ),
+            CustomTextField(controller: contactsController, label: 'Телефон, WhatsApp...', widthFactor: 1),
             const SizedBox(height: 20),
 
             const AddLabel(label: 'Город'),
@@ -129,10 +165,7 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
                   value: selectedCity,
                   hint: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Выберите город',
-                      style: TextStyle(color: hint_color),
-                    ),
+                    child: Text('Выберите город', style: TextStyle(color: hint_color)),
                   ),
                   dropdownColor: textfield_color,
                   isExpanded: true,
@@ -142,18 +175,11 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
                       value: city,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          city,
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                        child: Text(city, style: const TextStyle(color: Colors.white)),
                       ),
                     );
                   }).toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      selectedCity = newValue;
-                    });
-                  },
+                  onChanged: (newValue) => setState(() => selectedCity = newValue),
                 ),
               ),
             ),
@@ -161,10 +187,53 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
 
             const AddLabel(label: 'Адрес'),
             const SizedBox(height: 10),
-            CustomTextField(
-              controller: addressController,
-              label: 'Улица, дом, офис',
-              widthFactor: 1,
+            CustomTextField(controller: addressController, label: 'Улица, дом, офис', widthFactor: 1),
+            const SizedBox(height: 20),
+
+            const AddLabel(label: 'Часы работы'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _selectStartTime,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: textfield_color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Открытие', style: TextStyle(color: hint_color)),
+                          Text(_formatTime(startTime), style: TextStyle(color: startTime != null ? Colors.white : hint_color)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _selectEndTime,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: textfield_color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Закрытие', style: TextStyle(color: hint_color)),
+                          Text(_formatTime(endTime), style: TextStyle(color: endTime != null ? Colors.white : hint_color)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -172,30 +241,43 @@ class _EditSalonScreenState extends State<EditSalonScreen> {
     );
   }
 
-  void _saveChanges() {
-    if (nameController.text.isEmpty ||
-        descriptionController.text.isEmpty ||
-        contactsController.text.isEmpty ||
-        selectedCity == null ||
-        addressController.text.isEmpty) {
+  void _saveChanges() async {
+    final name = nameController.text.trim();
+    final description = descriptionController.text.trim();
+    final contacts = contactsController.text.trim();
+    final address = addressController.text.trim();
+
+    if (name.isEmpty) { _showError('Введите название салона'); return; }
+    if (description.isEmpty) { _showError('Введите описание'); return; }
+    if (contacts.isEmpty) { _showError('Введите контакты'); return; }
+    if (selectedCity == null) { _showError('Выберите город'); return; }
+    if (address.isEmpty) { _showError('Введите адрес'); return; }
+    if (startTime == null || endTime == null) { _showError('Укажите часы работы'); return; }
+
+    final salonProvider = Provider.of<SalonProvider>(context, listen: false);
+    final success = await salonProvider.saveSalon({
+      'name': name,
+      'description': description,
+      'contacts': contacts,
+      'city': selectedCity,
+      'address': address,
+      'startTime': '${startTime!.hour}:${startTime!.minute.toString().padLeft(2, '0')}',
+      'endTime': '${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}',
+    });
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Заполните все поля'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Изменения сохранены!'), backgroundColor: Colors.green),
       );
-      return;
+      Navigator.pop(context, true);
+    } else {
+      _showError('Ошибка сохранения');
     }
+  }
 
-    // TODO: Сохранить изменения в Firebase
-    
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Изменения сохранены!'),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
-
-    Navigator.pop(context, true);
   }
 }
