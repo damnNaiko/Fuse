@@ -71,6 +71,7 @@ flutter:
     - lib/assets/png/Services.png
     - lib/assets/png/Settings.png
     - lib/assets/png/Edit.png
+    - lib/assets/png/Logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

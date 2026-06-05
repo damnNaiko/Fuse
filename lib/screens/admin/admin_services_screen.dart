@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fuse/routes/app_routes.dart';
 import 'package:provider/provider.dart';
 import 'package:fuse/providers/service_provider.dart';
 import 'package:fuse/providers/salon_provider.dart';
@@ -359,9 +360,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () {
-                  // Переключаем нижнюю навигацию на главный экран (индекс 0)
-                  // Нужно передать индекс в AdminMainScreen
-                  Navigator.pop(context); // Возвращаемся назад, если нужно
+                  Navigator.pushNamed(context, AppRoutes.addService);
                 },
                 icon: const Icon(Icons.add, color: Colors.black),
                 label: const Text('Создать салон', style: TextStyle(color: Colors.black)),

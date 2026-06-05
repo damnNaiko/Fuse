@@ -8,6 +8,8 @@ import 'package:fuse/screens/client/client_main_screen.dart';
 import 'package:fuse/screens/shared/settings_screen.dart';
 import 'package:fuse/screens/admin/add_service_screen.dart';
 import 'package:fuse/screens/admin/edit_salon_screen.dart';
+import 'package:fuse/screens/splash_screen.dart';
+import 'package:fuse/screens/check_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -19,6 +21,9 @@ class AppRoutes {
   static const String editSalon = '/edit-salon';
   static const String forgotPassword = '/forgot-password';
   static const String city = '/city';
+  static const String splash = '/splash';
+  static const String check = '/check';
+
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -27,6 +32,12 @@ class AppRoutes {
 
       case clientMain:
         return MaterialPageRoute(builder: (_) => const ClientMainScreen());
+      
+      case splash:
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
+        
+      case check:
+        return MaterialPageRoute(builder: (_) => const CheckScreen());
 
       case city:
         return MaterialPageRoute(builder: (_) => const CityChangeScreen());

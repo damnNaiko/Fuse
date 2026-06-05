@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -12,10 +13,36 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
 
   AuthProvider() {
-    _auth.authStateChanges().listen((User? user) {
+    _checkAuthState();
+    _auth.authStateChanges().listen((User? user) async {
       _user = user;
+      if (user != null) {
+        await _saveUserSession(user.uid);
+      } else {
+        await _clearSession();
+      }
       notifyListeners();
     });
+  }
+
+  Future<void> _checkAuthState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUid = prefs.getString('user_uid');
+    
+    if (savedUid != null && _user == null) {
+      // Сессия есть, Firebase сам восстановит пользователя через authStateChanges
+      // Просто ждём
+    }
+  }
+
+  Future<void> _saveUserSession(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_uid', uid);
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_uid');
   }
 
   // Регистрация
@@ -24,10 +51,11 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      await _auth.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      await _saveUserSession(userCredential.user!.uid);
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = _getErrorMessage(e.code);
@@ -46,10 +74,11 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      await _saveUserSession(userCredential.user!.uid);
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = _getErrorMessage(e.code);
@@ -65,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
   // Выход
   Future<void> logout() async {
     await _auth.signOut();
+    await _clearSession();
   }
 
   String _getErrorMessage(String code) {
@@ -84,7 +114,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-    Future<String?> getUserRole(String uid) async {
+  Future<String?> getUserRole(String uid) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       return doc.data()?['role'];
