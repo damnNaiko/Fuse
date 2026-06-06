@@ -10,7 +10,6 @@ class SalonProvider extends ChangeNotifier {
   Map<String, dynamic>? get salon => _salon;
   bool get isLoading => _isLoading;
 
-  // Загрузка салона текущего админа
   Future<void> fetchSalon() async {
     _isLoading = true;
     notifyListeners();
@@ -42,7 +41,6 @@ class SalonProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Создание или обновление салона
   Future<bool> saveSalon(Map<String, dynamic> salonData) async {
     _isLoading = true;
     notifyListeners();
@@ -54,19 +52,16 @@ class SalonProvider extends ChangeNotifier {
       salonData['adminId'] = user.uid;
       salonData['updatedAt'] = FieldValue.serverTimestamp();
 
-      // Проверяем, есть ли уже салон
       final query = await _firestore
           .collection('salons')
           .where('adminId', isEqualTo: user.uid)
           .get();
 
       if (query.docs.isNotEmpty) {
-        // Обновляем существующий
         await query.docs.first.reference.update(salonData);
         _salon = salonData;
         _salon!['id'] = query.docs.first.id;
       } else {
-        // Создаем новый
         final docRef = _firestore.collection('salons').doc();
         salonData['createdAt'] = FieldValue.serverTimestamp();
         await docRef.set(salonData);
@@ -84,7 +79,6 @@ class SalonProvider extends ChangeNotifier {
     }
   }
 
-  // Очистка
   void clear() {
     _salon = null;
     notifyListeners();
