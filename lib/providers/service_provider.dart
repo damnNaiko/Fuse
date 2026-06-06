@@ -67,7 +67,6 @@ class ServiceProvider extends ChangeNotifier {
     if (user == null) return false;
 
     try {
-      // Находим салон админа
       final salonQuery = await _firestore
           .collection('salons')
           .where('adminId', isEqualTo: user.uid)
@@ -77,7 +76,6 @@ class ServiceProvider extends ChangeNotifier {
 
       final salonId = salonQuery.docs.first.id;
 
-      // Сохраняем услугу
       await _firestore.collection('services').add({
         'salonId': salonId,
         'name': serviceData['name'],
@@ -86,7 +84,7 @@ class ServiceProvider extends ChangeNotifier {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await fetchServices(); // Обновляем список
+      await fetchServices(); 
       return true;
     } catch (e) {
       return false;
